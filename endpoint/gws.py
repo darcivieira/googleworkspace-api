@@ -402,15 +402,33 @@ class GoogleWorkspace(GoogleConnector):
             return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"success_message": "Group create with success!"}, status=status.HTTP_200_OK)
 
-    def delete_group(self, groupkey):
+    def update_group(self, options: dict = None):
 
-        # Check the groupkey variable
-        if not groupkey or not isinstance(groupkey, str):
-            return Response({"error_message": "You must set the string groupkey"},
+        # Check the options variable
+        if not options or not isinstance(options, dict):
+            return Response({"error_message": "You must set the dictionary options"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the domains variable is empty
+        if not options.get('body') or not options.get('groupKey'):
+            return Response({"error_message": "You must to fill all required keys (groupKey and body)!"},
                             status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            self._connection().groups().delete(groupKey=groupkey).execute()
+            self._connection().groups().update(groupKey=options.get('groupKey'), body=options.get('body')).execute()
+        except Exception as error:
+            return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success_message": "Group updated with success!"}, status=status.HTTP_200_OK)
+
+    def delete_group(self, options: dict = None):
+
+        # Check the groupkey variable
+        if not options or not isinstance(options, dict) or not options.get('groupKey'):
+            return Response({"error_message": "You must set the dictionary options"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            self._connection().groups().delete(groupKey=options['groupKey']).execute()
         except Exception as error:
             return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"success_message": "Group deleted with success!"}, status=status.HTTP_200_OK)

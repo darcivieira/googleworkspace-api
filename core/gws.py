@@ -36,3 +36,12 @@ class Workspace:
             return self.__con().get_all_groups(options)
         return self.__con().get_group(options)
 
+    def insert_group(self, options):
+        return self.__con().insert_group(options)
+
+    def update_group(self, options):
+        return self.__con().update_group(options)
+
+    def delete_group(self, options):
+        return self.__con().delete_group(options)
+
