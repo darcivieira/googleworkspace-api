@@ -68,37 +68,48 @@ class GoogleWorkspace(GoogleConnector):
 
         elif isinstance(options['domain'], list):
             user_list = []
+            error_list = []
             for domain in options['domain']:
+                if not domain:
+                    continue
                 while True:
-                    data_user = self._connection().users().list(orderBy=options.get('orderBy'),
-                                                                domain=domain,
-                                                                projection=options.get('projection'),
-                                                                query=options.get('query'),
-                                                                event=options.get('event'),
-                                                                showDeleted=options.get('showDeleted'),
-                                                                pageToken=options.get('pageToken'),
-                                                                sortOrder=options.get('sortOrder'),
-                                                                maxResults=options.get('maxResults'),
-                                                                customer=options.get('customer'),
-                                                                customFieldMask=options.get('customFieldMask'),
-                                                                viewType=options.get('viewType')
-                                                                ).execute()
-                    if data_user.get('users'):
-                        for user in data_user['users']:
-                            user_list.append(user)
+                    try:
+                        data_user = self._connection().users().list(orderBy=options.get('orderBy'),
+                                                                    domain=domain,
+                                                                    projection=options.get('projection'),
+                                                                    query=options.get('query'),
+                                                                    event=options.get('event'),
+                                                                    showDeleted=options.get('showDeleted'),
+                                                                    pageToken=options.get('pageToken'),
+                                                                    sortOrder=options.get('sortOrder'),
+                                                                    maxResults=options.get('maxResults'),
+                                                                    customer=options.get('customer'),
+                                                                    customFieldMask=options.get('customFieldMask'),
+                                                                    viewType=options.get('viewType')
+                                                                    ).execute()
+                    except Exception as error:
+                        error_list.append(error)
+                    else:
+                        if data_user.get('users'):
+                            for user in data_user['users']:
+                                user_list.append(user)
                         if data_user.get('nextPageToken'):
                             options['pageToken'] = data_user.get('nextPageToken')
                         else:
                             options['pageToken'] = None
                             break
-                    else:
-                        options['pageToken'] = None
-                        break
-            if not user_list:
-                return Response({'error_message': 'Something went wrong! We could not process your request!'},
-                                status=status.HTTP_400_BAD_REQUEST)
+            if user_list and error_list:
+                return Response({"api_response": {"success_message": user_list, "error_message": error_list}},
+                                status=status.HTTP_206_PARTIAL_CONTENT)
+            elif user_list:
+                return Response({"api_response": {"success_message": user_list}},
+                                status=status.HTTP_200_OK)
+            elif error_list:
+                return Response({"api_response": {"error_message": error_list}},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             else:
-                return Response({"api_response": user_list}, status=status.HTTP_200_OK)
+                return Response({"api_response": {"error_message": "Something went wrong! We could not process your request!"}},
+                                status=status.HTTP_404_NOT_FOUND)
         else:
             return Response({"error_message": "You must set domain as a list or a string with your domain name!"},
                             status=status.HTTP_400_BAD_REQUEST)
