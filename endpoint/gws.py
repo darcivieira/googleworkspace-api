@@ -164,9 +164,20 @@ class GoogleWorkspace(GoogleConnector):
         return Response({'success_message': 'Account updated with success!'},
                         status=status.HTTP_200_OK)
 
-    def delete_user(self):
+    def delete_user(self, options):
         # Looking for a way to transfer all drive data and calendar appointment before delete an account
-        return None
+
+        # Check the options variable
+        if not options or not isinstance(options, dict) or not options.get('userKey'):
+            return Response({"error_message": "You must set the dictionary options"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            self._connection().users().delete(userKey=options['userKey']).execute()
+        except Exception as error:
+            return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'success_message': 'Account deleted with success!'},
+                        status=status.HTTP_200_OK)
 
     """ Mobile """
 
@@ -293,9 +304,9 @@ class GoogleWorkspace(GoogleConnector):
             return Response({"error_message": "You must set the dictionary options"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        if not options.get('maxResults') or options.get('maxResults') != "all":
+        if not options.get('domain') or isinstance(options.get('domain'), str):
             try:
-                all_data = self._connection().groups().list(customer=options.get('customerId'),
+                all_data = self._connection().groups().list(customer=self._customer_id,
                                                             orderBy=options.get('orderBy'),
                                                             domain=options.get('domain'),
                                                             pageToken=options.get('pageToken'),
@@ -305,52 +316,60 @@ class GoogleWorkspace(GoogleConnector):
                                                             userKey=options.get('userKey')
                                                             ).execute()
             except Exception as error:
-                return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
-            return all_data
-        else:
-            del options['maxResults']
-            all_groups = []
-            error_list = []
-            while True:
-                try:
-                    all_data = self._connection().groups().list(customer=options.get('customerId'),
-                                                                orderBy=options.get('orderBy'),
-                                                                domain=options.get('domain'),
-                                                                pageToken=options.get('pageToken'),
-                                                                maxResults=options.get('maxResults'),
-                                                                sortOrder=options.get('sortOrder'),
-                                                                query=options.get('query'),
-                                                                userKey=options.get('userKey')
-                                                                ).execute()
-                except Exception as error:
-                    error_list.append(error)
-                else:
-                    if all_data.get('groups'):
-                        for group in all_data['groups']:
-                            all_groups.append(group)
-                    if all_data.get('nextPageToken'):
-                        options['pageToken'] = all_data.get('nextPageToken')
-                    else:
-                        break
-            if all_groups and error_list:
-                return Response({"success_message": all_groups, "error_message": error_list},
-                                status=status.HTTP_206_PARTIAL_CONTENT)
-            elif all_groups:
-                return Response({"success_message": all_groups}, status=status.HTTP_200_OK)
-            elif error_list:
-                return Response({"error_message": error_list}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({"error_message": "We not found the resquested data!"},
+                return Response({"api_response": all_data}, status=status.HTTP_200_OK)
+        elif isinstance(options.get('domain'), list):
+            group_list = []
+            error_list = []
+            for domain in options['domain']:
+                options['domain'] = domain
+                while True:
+                    try:
+                        all_data = self._connection().groups().list(customer=self._customer_id,
+                                                                    orderBy=options.get('orderBy'),
+                                                                    domain=options.get('domain'),
+                                                                    pageToken=options.get('pageToken'),
+                                                                    maxResults=options.get('maxResults'),
+                                                                    sortOrder=options.get('sortOrder'),
+                                                                    query=options.get('query'),
+                                                                    userKey=options.get('userKey')
+                                                                    ).execute()
+                    except Exception as error:
+                        error_list.append(error)
+                    else:
+                        if all_data.get('groups'):
+                            for group in all_data['groups']:
+                                group_list.append(group)
+                        if all_data.get('nextPageToken'):
+                            options['pageToken'] = all_data.get('nextPageToken')
+                        else:
+                            break
+            if group_list and error_list:
+                return Response({"api_response": {"success_message": group_list, "error_message": error_list}},
+                                status=status.HTTP_206_PARTIAL_CONTENT)
+            elif group_list:
+                return Response({"api_response": {"success_message": group_list}},
+                                status=status.HTTP_200_OK)
+            elif error_list:
+                return Response({"api_response": {"error_message": error_list}},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                return Response({"api_response": {"error_message": "We not found the resquested data!"}},
                                 status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({"api_response": {
+                "error_message": "You must set domain as a list or a string with your domain name!"}},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-    def get_group(self, groupkey=None):
+    def get_group(self, options: dict = None):
 
         # Check the groupkey variable
-        if not groupkey or not isinstance(groupkey, str):
+        if not options or not isinstance(options, dict):
             return Response({"error_message": "You must set the string groupkey"},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
-            group = self._connection().groups().get(groupKey=groupkey).execute()
+            group = self._connection().groups().get(groupKey=options['groupKey']).execute()
         except Exception as error:
             return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"api_response": group}, status=status.HTTP_200_OK)

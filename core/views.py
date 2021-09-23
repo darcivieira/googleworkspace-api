@@ -11,17 +11,90 @@ class UserAPIView(APIView):
     gws = Workspace
 
     def get(self, request):
+
         options = request.data
         api_options = options['api_options']
 
-        if options.get('api_options'):
-            serializer_data = options
-            serializer_data['api_options'] = str(options['api_options'])
-            serializer = AuditLogSerializer(data=serializer_data)
-            if serializer.is_valid(raise_exception=True):
-                response_data = self.gws().get_user(api_options)
-                serializer.save()
-                return response_data
+        if options['access_type'] == "GET":
+            if options.get('api_options'):
+                serializer_data = options
+                serializer_data['api_options'] = str(options['api_options'])
+                serializer = AuditLogSerializer(data=serializer_data)
+                if serializer.is_valid(raise_exception=True):
+                    response_data = self.gws().get_user(api_options)
+                    serializer.save()
+                    return response_data
+        return Response({'error_msg': 'Something went wrong!'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
+
+        options = request.data
+        api_options = options['api_options']
+
+        if options['access_type'] == "POST":
+            if options.get('api_options'):
+                serializer_data = options
+                serializer_data['api_options'] = str(options['api_options'])
+                serializer = AuditLogSerializer(data=serializer_data)
+                if serializer.is_valid(raise_exception=True):
+                    response_data = self.gws().insert_user(api_options)
+                    serializer.save()
+                    return response_data
+        return Response({'error_msg': 'Something went wrong! POST'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+
+        options = request.data
+        api_options = options['api_options']
+
+        if options['access_type'] == "PUT":
+            if options.get('api_options'):
+                serializer_data = options
+                serializer_data['api_options'] = str(options['api_options'])
+                serializer = AuditLogSerializer(data=serializer_data)
+                if serializer.is_valid(raise_exception=True):
+                    response_data = self.gws().update_user(api_options)
+                    serializer.save()
+                    return response_data
+
+        return Response({'error_msg': 'Something went wrong! PUT'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+
+        options = request.data
+        api_options = options['api_options']
+
+        if options['access_type'] == "DELETE":
+            if options.get('api_options'):
+                serializer_data = options
+                serializer_data['api_options'] = str(options['api_options'])
+                serializer = AuditLogSerializer(data=serializer_data)
+                if serializer.is_valid(raise_exception=True):
+                    response_data = self.gws().delete_user(api_options)
+                    serializer.save()
+                    return response_data
+
+        return Response({'error_msg': 'Something went wrong! DELETE'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GroupAPIView(APIView):
+
+    gws = Workspace
+
+    def get(self, request):
+
+        options = request.data
+        api_options = options['api_options']
+
+        if options['access_type'] == "GET":
+            if options.get('api_options'):
+                serializer_data = options
+                serializer_data['api_options'] = str(options['api_options'])
+                serializer = AuditLogSerializer(data=serializer_data)
+                if serializer.is_valid(raise_exception=True):
+                    response_data = self.gws().get_group(api_options)
+                    serializer.save()
+                    return response_data
         return Response({'error_msg': 'Something went wrong!'}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
@@ -41,7 +114,7 @@ class UserAPIView(APIView):
         return Response({'error_msg': 'Something went wrong! DELETE'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class GroupAPIView(APIView):
+class MemberAPIView(APIView):
 
     gws = Workspace
 
