@@ -186,7 +186,7 @@ class GoogleWorkspace(GoogleConnector):
         try:
             self._connection().users().delete(userKey=options['userKey']).execute()
         except Exception as error:
-            return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'exception_error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'success_message': 'Account deleted with success!'},
                         status=status.HTTP_200_OK)
 
@@ -430,7 +430,7 @@ class GoogleWorkspace(GoogleConnector):
         try:
             self._connection().groups().delete(groupKey=options['groupKey']).execute()
         except Exception as error:
-            return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'exception_error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"success_message": "Group deleted with success!"}, status=status.HTTP_200_OK)
 
     """ Data Transfer """
@@ -462,3 +462,103 @@ class GoogleWorkspace(GoogleConnector):
                                         status=status.HTTP_200_OK)
                     sleep(10)
 
+    """ Members """
+
+    def get_all_members(self, options: dict = None):
+
+        # Check the options variable
+        if not options or not isinstance(options, dict):
+            return Response({"error_message": "You must set the dictionary options"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if not options.get('maxResults') or not isinstance(options.get('maxResults'), str):
+            try:
+                members = self._connection().members().list(
+                    groupKey=options.get('groupKey'),
+                    pageToken=options.get('pageToken'),
+                    maxResults=options.get('maxResults'),
+                    roles=options.get('roles'),
+                    includeDerivedMembership=options.get('includeDerivedMembership')
+                ).execute()
+            except Exception as error:
+                return Response({"error_message": str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                return Response({"success_message": members}, status=status.HTTP_200_OK)
+        else:
+            members_list = []
+            error_list = []
+            del options['maxResults']
+
+            while True:
+                try:
+                    members = self._connection().members().list(
+                        groupKey=options.get('groupKey'),
+                        pageToken=options.get('pageToken'),
+                        maxResults=options.get('maxResults'),
+                        roles=options.get('roles'),
+                        includeDerivedMembership=options.get('includeDerivedMembership')
+                    ).execute()
+                except Exception as error:
+                    error_list.append(str(error))
+                else:
+                    if members.get('members'):
+                        for member in members['members']:
+                            members_list.append(member)
+                    if members.get('nextPageToken'):
+                        options['pageToken'] = members.get('nextPageToken')
+                    else:
+                        break
+            if members_list and error_list:
+                return Response({"success_message": members_list, "error_message": error_list},
+                                status=status.HTTP_206_PARTIAL_CONTENT)
+            elif members_list:
+                return Response({"success_message": members_list},
+                                status=status.HTTP_200_OK)
+            elif error_list:
+                return Response({"error_message": error_list},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                return Response(
+                    {"error_message": "We not found the resquested data!"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+    def insert_member(self, options: dict = None):
+
+        # Check the options variable
+        if not options or not isinstance(options, dict):
+            return Response({"error_message": "You must set the dictionary options"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if not options.get('groupKey') or not options.get('body'):
+            return Response({"error_message": "You must specify both key (groupKey and body)!"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            self._connection().members().insert(
+                groupKey=options.get('groupKey'),
+                body=options.get('body')
+            ).execute()
+        except Exception as error:
+            return Response({'exception_error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success_message": "Member inserted with success!"}, status=status.HTTP_200_OK)
+
+    def delete_member(self, options: dict = None):
+
+        # Check the options variable
+        if not options or not isinstance(options, dict):
+            return Response({"error_message": "You must set the dictionary options"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if not options.get('groupKey') or not options.get('memberKey'):
+            return Response({"error_message": "You must specify both key (groupKey and memberKey)!"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            self._connection().members().delete(
+                groupKey=options.get('groupKey'),
+                memberKey=options.get('memberKey')
+            ).execute()
+        except Exception as error:
+            return Response({'exception_error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success_message": "Member deleted with success!"}, status=status.HTTP_200_OK)

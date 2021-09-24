@@ -45,3 +45,13 @@ class Workspace:
     def delete_group(self, options):
         return self.__con().delete_group(options)
 
+    """ MEMBERS """
+
+    def get_members(self, options):
+        return self.__con().get_all_members(options)
+
+    def insert_member(self, options):
+        return self.__con().insert_member(options)
+
+    def delete_member(self, options):
+        return self.__con().delete_member(options)
