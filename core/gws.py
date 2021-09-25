@@ -55,3 +55,15 @@ class Workspace:
 
     def delete_member(self, options):
         return self.__con().delete_member(options)
+
+    """ MOBILE DEVICES """
+
+    def get_devices(self, options):
+        if options.get('email'):
+            return self.__con().get_all_user_devices(options)
+        return self.__con().get_all_devices(options)
+
+    def delete_devices(self, options):
+        if options.get('resourceId'):
+            return self.__con().delete_one_user_device(options)
+        return self.__con().delete_all_user_devices(options)

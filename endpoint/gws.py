@@ -199,9 +199,9 @@ class GoogleWorkspace(GoogleConnector):
             return Response({"error_message": "You must set the dictionary options"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        if not options.get('pageToken') or options.get('pageToken') != 'all':
+        if not options.get('maxResults') or not isinstance(options.get('maxResults'), str):
             try:
-                data_devices = self._connection().mobiledevices().list(customerId=options.get('customerId'),
+                data_devices = self._connection().mobiledevices().list(customerId=self._customer_id,
                                                                        orderBy=options.get('orderBy'),
                                                                        projection=options.get('projection'),
                                                                        pageToken=options.get('pageToken'),
@@ -215,11 +215,10 @@ class GoogleWorkspace(GoogleConnector):
                 return Response({"api_response": data_devices}, status=status.HTTP_200_OK)
         else:
             all_devices = []
-            options['pageToken'] = None
+            del options['maxResults']
             while True:
-                print("OI")
                 try:
-                    data_devices = self._connection().mobiledevices().list(customerId=options.get('customerId'),
+                    data_devices = self._connection().mobiledevices().list(customerId=self._customer_id,
                                                                            orderBy=options.get('orderBy'),
                                                                            projection=options.get('projection'),
                                                                            pageToken=options.get('pageToken'),
@@ -249,7 +248,29 @@ class GoogleWorkspace(GoogleConnector):
             return Response({"error_message": "You must inform an email"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        list_user_devices = list(filter(lambda x: options['email'] in x['email'], self.get_all_devices(options)))
+        all_devices = []
+
+        while True:
+            try:
+                data_devices = self._connection().mobiledevices().list(customerId=self._customer_id,
+                                                                       orderBy=options.get('orderBy'),
+                                                                       projection=options.get('projection'),
+                                                                       pageToken=options.get('pageToken'),
+                                                                       maxResults=options.get('maxResults'),
+                                                                       sortOrder=options.get('sortOrder'),
+                                                                       query=options.get('query')
+                                                                       ).execute()
+            except Exception as error:
+                Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                for device in data_devices['mobiledevices']:
+                    all_devices.append(device)
+                if data_devices.get('nextPageToken'):
+                    options['pageToken'] = data_devices['nextPageToken']
+                else:
+                    break
+
+        list_user_devices = list(filter(lambda x: options['email'] in x['email'], all_devices))
 
         return Response({"api_response": list_user_devices},
                         status=status.HTTP_200_OK)
@@ -266,14 +287,36 @@ class GoogleWorkspace(GoogleConnector):
             return Response({"error_message": "You must inform an email"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        user_devices = filter(lambda x: options['email'] in x['email'], self.get_all_devices(options))
+        all_devices = []
+
+        while True:
+            try:
+                data_devices = self._connection().mobiledevices().list(customerId=self._customer_id,
+                                                                       orderBy=options.get('orderBy'),
+                                                                       projection=options.get('projection'),
+                                                                       pageToken=options.get('pageToken'),
+                                                                       maxResults=options.get('maxResults'),
+                                                                       sortOrder=options.get('sortOrder'),
+                                                                       query=options.get('query')
+                                                                       ).execute()
+            except Exception as error:
+                Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                for device in data_devices['mobiledevices']:
+                    all_devices.append(device)
+                if data_devices.get('nextPageToken'):
+                    options['pageToken'] = data_devices['nextPageToken']
+                else:
+                    break
+
+        user_devices = filter(lambda x: options['email'] in x['email'], all_devices)
         exception_list = []
         index = 0
 
         for device in user_devices:
             if device.get('type') in ['IOS_SYNC', 'ANDROID'] and device.get('resourceId'):
                 try:
-                    self._connection().mobiledevices().delete(customerId=options.get('customerId'),
+                    self._connection().mobiledevices().delete(customerId=self._customer_id,
                                                               resourceId=device['resourceId']).execute()
                 except Exception as error:
                     exception_list.append([device, error])
@@ -299,8 +342,8 @@ class GoogleWorkspace(GoogleConnector):
                             status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            self._connection().mobiledevices().delete(customerId=options.get('customerId'),
-                                                      resourceId=options['resourceId']).execute()
+            self._connection().mobiledevices().delete(customerId=self._customer_id,
+                                                      resourceId=options.get('resourceId')).execute()
         except Exception as error:
             return Response({'exception_error': error}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -471,7 +514,7 @@ class GoogleWorkspace(GoogleConnector):
             return Response({"error_message": "You must set the dictionary options"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        if not options.get('maxResults') or not isinstance(options.get('maxResults'), str):
+        if not options.get('maxResults') or isinstance(options.get('maxResults'), int):
             try:
                 members = self._connection().members().list(
                     groupKey=options.get('groupKey'),
